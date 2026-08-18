@@ -327,11 +327,11 @@ export default function App() {
   const [avatar, setAvatar] = useState(null);
   const [avatarError, setAvatarError] = useState("");
   const [settings, setSettings] = useState({
-    auctions: false,
-    trading: false,
-    freeParking: false,
+    auctions: true,
+    trading: true,
+    freeParking: true,
     freestParking: false,
-    bond: false,
+    bond: true,
     startingMoney: 1500,
   });
   const pollRef = useRef(null);
@@ -555,6 +555,15 @@ function GlobalStyles() {
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+      html, body { width: 100%; min-height: 100%; margin: 0; padding: 0; }
+      #root {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        border-inline: none !important;
+        display: block !important;
+        min-height: 100vh !important;
+      }
       * { box-sizing: border-box; }
       .og-btn { transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, opacity 0.12s ease; }
       .og-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
@@ -585,12 +594,17 @@ function GlobalStyles() {
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #352a55; border-radius: 8px; }
       ::-webkit-scrollbar-thumb:hover { background: #46396f; }
+      @media (max-width: 560px) {
+        .og-hide-mobile { display: none !important; }
+      }
     `}</style>
   );
 }
 
 const wrapStyle = {
-  minHeight: "600px",
+  minHeight: "100vh",
+  width: "100%",
+  boxSizing: "border-box",
   background: "radial-gradient(ellipse 900px 500px at 50% -10%, #241a45 0%, #0c0818 55%), #0a0714",
   fontFamily: "'Inter', sans-serif",
   display: "flex",
@@ -765,7 +779,7 @@ function StartScreen({ nameInput, setNameInput, joinCodeInput, setJoinCodeInput,
 
 const cardStyle = {
   background: "linear-gradient(180deg, #191330 0%, #150f28 100%)", border: "1px solid #2c2247", borderRadius: 16,
-  padding: 24, boxShadow: "0 14px 44px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03)",
+  padding: "clamp(16px, 4vw, 24px)", boxShadow: "0 14px 44px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03)",
 };
 const labelStyle = { display: "block", color: "#a7e0f0", fontSize: 11, letterSpacing: 2, marginBottom: 7, textAlign: "left", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 };
 const inputStyle = {
@@ -795,7 +809,7 @@ function SettingsScreen({ settings, setSettings, onBack, onCreate }) {
     { key: "trading", title: "Trading", desc: "Players may freely trade properties and money with one another." },
     { key: "freeParking", title: "Free Parking", desc: "Money lost to Lucky Block cards and tax spaces piles up here; landing on it collects the pot." },
     { key: "freestParking", title: "Free(est) Parking", desc: "ALL money spent on properties goes to the pot too — bigger jackpots." },
-    { key: "bond", title: "Bond", desc: "Pay $50 to get out of jail instead of rolling doubles or waiting." },
+    { key: "bond", title: "Bond", desc: "Pay $100 to get out of jail instead of rolling doubles or waiting." },
   ];
   return (
     <div style={wrapStyle} className="og-screen-in">
@@ -975,6 +989,7 @@ function groupSpaces(group) {
 function GameScreen({ room, myId, roomCode, onUpdate }) {
   const [local, setLocal] = useState(room);
   const [rolling, setRolling] = useState(false);
+  const [showTradeBuilder, setShowTradeBuilder] = useState(false);
   const syncingRef = useRef(false);
 
   useEffect(() => { if (!syncingRef.current) setLocal(room); }, [room]);
@@ -1257,10 +1272,83 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
   async function handlePayBail() {
     const state = JSON.parse(JSON.stringify(local));
     const p = state.players[state.turnIdx];
-    if (p.money >= 50) {
-      p.money -= 50; p.inJail = false; p.jailTurns = 0;
-      log(state, `${p.name} paid the $50 bond to get out of jail.`);
+    if (p.money >= 100) {
+      p.money -= 100; p.inJail = false; p.jailTurns = 0;
+      log(state, `${p.name} paid the $100 bond to get out of jail.`);
     }
+    await commit(state);
+  }
+
+  function propValue(ids) {
+    return ids.reduce((sum, id) => sum + (RAW_BOARD[id]?.price || 0), 0);
+  }
+
+  async function handleProposeTrade({ toId, offerMoney, offerProps, requestMoney, requestProps }) {
+    const state = JSON.parse(JSON.stringify(local));
+    const from = state.players.find((p) => p.id === myId);
+    const to = state.players.find((p) => p.id === toId);
+    if (!from || !to || from.bankrupt || to.bankrupt) return;
+    if (offerMoney > from.money || requestMoney > to.money) return;
+    state.pendingTrade = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      fromId: from.id, toId: to.id,
+      offerMoney, offerProps, requestMoney, requestProps,
+    };
+    log(state, `${from.name} proposed a trade to ${to.name}.`);
+    await commit(state);
+  }
+
+  async function handleCancelTrade() {
+    const state = JSON.parse(JSON.stringify(local));
+    const t = state.pendingTrade;
+    if (!t || t.fromId !== myId) return;
+    const from = state.players.find((p) => p.id === t.fromId);
+    log(state, `${from.name} cancelled their trade offer.`);
+    state.pendingTrade = null;
+    await commit(state);
+  }
+
+  async function handleRespondTrade(accept) {
+    const state = JSON.parse(JSON.stringify(local));
+    const t = state.pendingTrade;
+    if (!t || t.toId !== myId) return;
+    const from = state.players.find((p) => p.id === t.fromId);
+    const to = state.players.find((p) => p.id === t.toId);
+    if (!from || !to) { state.pendingTrade = null; await commit(state); return; }
+
+    if (!accept) {
+      log(state, `${to.name} declined the trade from ${from.name}.`);
+      state.pendingTrade = null;
+      await commit(state);
+      return;
+    }
+
+    // Re-validate everything is still true at accept-time (money/ownership can change between offer and response).
+    const stillOwnsOffer = t.offerProps.every((id) => state.ownership[id] === from.id);
+    const stillOwnsRequest = t.requestProps.every((id) => state.ownership[id] === to.id);
+    if (from.money < t.offerMoney || to.money < t.requestMoney || !stillOwnsOffer || !stillOwnsRequest) {
+      log(state, `Trade between ${from.name} and ${to.name} fell through — something changed.`);
+      state.pendingTrade = null;
+      await commit(state);
+      return;
+    }
+
+    from.money -= t.offerMoney; to.money += t.offerMoney;
+    to.money -= t.requestMoney; from.money += t.requestMoney;
+    t.offerProps.forEach((id) => {
+      state.ownership[id] = to.id;
+      from.properties = from.properties.filter((pid) => pid !== id);
+      to.properties.push(id);
+    });
+    t.requestProps.forEach((id) => {
+      state.ownership[id] = from.id;
+      to.properties = to.properties.filter((pid) => pid !== id);
+      from.properties.push(id);
+    });
+
+    log(state, `${to.name} accepted the trade with ${from.name}.`);
+    setEvent(state, "buy", "Trade complete", `${from.name} ↔ ${to.name}`, to.id);
+    state.pendingTrade = null;
     await commit(state);
   }
 
@@ -1316,9 +1404,9 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
           if (d1 === d2) {
             p.inJail = false; p.jailTurns = 0;
             log(state, `${p.name} (bot) rolled doubles and got out of jail!`);
-          } else if (state.settings.bond && p.money >= 50) {
-            p.money -= 50; p.inJail = false; p.jailTurns = 0;
-            log(state, `${p.name} (bot) paid the $50 bond.`);
+          } else if (state.settings.bond && p.money >= 100) {
+            p.money -= 100; p.inJail = false; p.jailTurns = 0;
+            log(state, `${p.name} (bot) paid the $100 bond.`);
           } else {
             p.jailTurns += 1;
             log(state, `${p.name} (bot) is still in jail (${p.jailTurns}/3 turns).`);
@@ -1364,17 +1452,65 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
     return () => clearTimeout(t);
   }, [local.pendingAuction, iAmHost]);
 
+  // Host also evaluates trades sent to a bot: accept if what the bot receives is worth
+  // at least as much (money + property price) as what it gives up, otherwise decline.
+  useEffect(() => {
+    if (!iAmHost) return;
+    const t = local.pendingTrade;
+    if (!t) return;
+    const toPlayer = local.players.find((p) => p.id === t.toId);
+    if (!toPlayer || !toPlayer.isBot) return;
+    const timer = setTimeout(async () => {
+      const state = JSON.parse(JSON.stringify(local));
+      const trade = state.pendingTrade;
+      if (!trade) return;
+      const from = state.players.find((p) => p.id === trade.fromId);
+      const to = state.players.find((p) => p.id === trade.toId);
+      if (!from || !to) { state.pendingTrade = null; await commit(state); return; }
+
+      const gets = trade.offerMoney + propValue(trade.offerProps);
+      const gives = trade.requestMoney + propValue(trade.requestProps);
+      const canAfford = to.money >= trade.requestMoney && trade.requestProps.every((id) => state.ownership[id] === to.id);
+      const accept = canAfford && gets >= gives;
+
+      if (!accept) {
+        log(state, `${to.name} (bot) declined the trade from ${from.name}.`);
+        state.pendingTrade = null;
+        await commit(state);
+        return;
+      }
+
+      from.money -= trade.offerMoney; to.money += trade.offerMoney;
+      to.money -= trade.requestMoney; from.money += trade.requestMoney;
+      trade.offerProps.forEach((id) => {
+        state.ownership[id] = to.id;
+        from.properties = from.properties.filter((pid) => pid !== id);
+        to.properties.push(id);
+      });
+      trade.requestProps.forEach((id) => {
+        state.ownership[id] = from.id;
+        to.properties = to.properties.filter((pid) => pid !== id);
+        from.properties.push(id);
+      });
+      log(state, `${to.name} (bot) accepted the trade with ${from.name}.`);
+      setEvent(state, "buy", "Trade complete", `${from.name} ↔ ${to.name}`, to.id);
+      state.pendingTrade = null;
+      await commit(state);
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, [local.pendingTrade, iAmHost]);
+
   const board2d = buildBoardGrid();
   const winner = local.phase === "ended" && local.winnerId ? local.players.find((p) => p.id === local.winnerId) : null;
 
   return (
-    <div style={{ ...wrapStyle, alignItems: "flex-start", flexDirection: "column", gap: 16, padding: 16, position: "relative", overflow: "hidden" }} className="og-screen-in">
+    <div style={{ ...wrapStyle, alignItems: "flex-start", flexDirection: "column", gap: 14, padding: "10px clamp(8px, 3vw, 18px)", position: "relative", overflow: "hidden" }} className="og-screen-in">
       <CutsceneOverlay event={local.lastEvent} players={local.players} />
       {local.phase === "ended" && <GameOverOverlay winner={winner} me={me} />}
-      <div style={{ display: "flex", width: "100%", maxWidth: 1760, margin: "0 auto", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, rowGap: 4 }}>
+      <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, rowGap: 4 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-          <div style={{ color: "#ffcf3f", fontSize: 22, letterSpacing: 1, fontFamily: "'Archivo Black', sans-serif", whiteSpace: "nowrap" }}>OLIGOPOLY</div>
-          <div style={{ color: "#4a4070", fontSize: 10, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+          <div style={{ color: "#ffcf3f", fontSize: "clamp(17px, 4.5vw, 22px)", letterSpacing: 1, fontFamily: "'Archivo Black', sans-serif", whiteSpace: "nowrap" }}>OLIGOPOLY</div>
+          <div className="og-hide-mobile" style={{ color: "#4a4070", fontSize: 10, letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", whiteSpace: "nowrap" }}>
             WinterAG Studios · Original by Tino
           </div>
         </div>
@@ -1384,23 +1520,35 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         }}>ROOM {roomCode}</div>
       </div>
 
-      <div style={{ display: "flex", width: "100%", maxWidth: 1760, margin: "0 auto", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: "2.4 1 720px", minWidth: 380 }}>
+      <div style={{ display: "flex", width: "100%", gap: 14, flexWrap: "wrap", flex: 1, minHeight: 0 }}>
+        <div style={{ flex: "3 1 300px", minWidth: 260, display: "flex" }}>
           <BoardView board2d={board2d} state={local} />
         </div>
 
-        <div style={{ flex: "1 1 300px", minWidth: 260, maxWidth: 380, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ flex: "1 1 280px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
           <PlayersPanel state={local} myId={myId} />
 
-          <div style={{ ...cardStyle, padding: 20 }} className="og-fade-in">
+          <div style={{ ...cardStyle, padding: "clamp(14px, 3.5vw, 20px)" }} className="og-fade-in">
             {local.phase === "ended" ? (
               <div style={{ textAlign: "center", color: "#c9c0e8", fontFamily: "sans-serif", fontSize: 13 }}>
                 {winner ? `🏆 ${winner.name} won the game!` : "Game over."}
               </div>
             ) : local.pendingAuction ? (
               <AuctionPanel state={local} me={me} onBid={handleAuctionBid} onClose={handleAuctionClose} isHost={me?.isHost} />
+            ) : local.pendingTrade && local.pendingTrade.toId === myId ? (
+              <TradeResponsePanel trade={local.pendingTrade} players={local.players} onAccept={() => handleRespondTrade(true)} onDecline={() => handleRespondTrade(false)} />
+            ) : local.pendingTrade && local.pendingTrade.fromId === myId ? (
+              <TradeWaitingPanel trade={local.pendingTrade} players={local.players} onCancel={handleCancelTrade} />
             ) : local.awaitingBuyDecision && myTurn ? (
               <BuyPanel space={RAW_BOARD[currentPlayer.pos]} me={currentPlayer} onBuy={() => handleBuy(true)} onPass={() => handleBuy(false)} />
+            ) : showTradeBuilder ? (
+              <TradeBuilderPanel
+                me={me}
+                others={local.players.filter((p) => p.id !== myId && !p.bankrupt)}
+                ownership={local.ownership}
+                onSubmit={async (payload) => { await handleProposeTrade(payload); setShowTradeBuilder(false); }}
+                onClose={() => setShowTradeBuilder(false)}
+              />
             ) : (
               <TurnPanel
                 room={local} me={me} myTurn={myTurn} rolling={rolling}
@@ -1409,7 +1557,15 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
             )}
           </div>
 
-          <div style={{ ...cardStyle, padding: 18, maxHeight: 340, overflowY: "auto", textAlign: "left" }}>
+          {local.settings.trading && local.phase === "playing" && !local.pendingTrade && me && !me.bankrupt &&
+            !local.awaitingBuyDecision && !local.pendingAuction && !showTradeBuilder &&
+            local.players.filter((p) => p.id !== myId && !p.bankrupt).length > 0 && (
+            <button className="og-btn" style={{ ...secondaryBtn, marginTop: 0 }} onClick={() => setShowTradeBuilder(true)}>
+              🤝 Propose trade
+            </button>
+          )}
+
+          <div style={{ ...cardStyle, padding: "clamp(12px, 3vw, 18px)", maxHeight: 340, overflowY: "auto", textAlign: "left" }}>
             <div style={{ ...labelStyle, marginBottom: 10 }}>LOG</div>
             {local.log.slice().reverse().map((l, i) => (
               <div key={i} style={{
@@ -1549,10 +1705,10 @@ function TurnPanel({ room, me, myTurn, rolling, onRoll, onPayBail }) {
             color: "#ff9d9d", fontSize: 12, marginBottom: 8, fontFamily: "sans-serif",
             background: "rgba(229,67,58,0.1)", border: "1px solid rgba(229,67,58,0.3)", borderRadius: 8, padding: "8px 10px",
           }}>
-            🔒 In jail (turn {cp.jailTurns}/3). Roll doubles to escape{room.settings.bond ? ", or pay a $50 bond." : "."}
+            🔒 In jail (turn {cp.jailTurns}/3). Roll doubles to escape{room.settings.bond ? ", or pay a $100 bond." : "."}
           </div>
           {room.settings.bond && (
-            <button className="og-btn" style={secondaryBtn} onClick={onPayBail}>Pay $50 bond</button>
+            <button className="og-btn" style={secondaryBtn} onClick={onPayBail}>Pay $100 bond</button>
           )}
         </div>
       )}
@@ -1618,6 +1774,143 @@ function AuctionPanel({ state, me, onBid, onClose, isHost }) {
   );
 }
 
+function propLabel(id) {
+  const s = RAW_BOARD[id];
+  return s ? `${s.name} ($${s.price})` : `#${id}`;
+}
+
+function TradeBuilderPanel({ me, others, ownership, onSubmit, onClose }) {
+  const [targetId, setTargetId] = useState(others[0]?.id || "");
+  const [offerMoney, setOfferMoney] = useState(0);
+  const [offerProps, setOfferProps] = useState([]);
+  const [requestMoney, setRequestMoney] = useState(0);
+  const [requestProps, setRequestProps] = useState([]);
+
+  const target = others.find((p) => p.id === targetId);
+  const myProps = (me?.properties || []).filter((id) => ownership[id] === me.id);
+  const theirProps = target ? (target.properties || []).filter((id) => ownership[id] === target.id) : [];
+
+  useEffect(() => { setOfferProps([]); setRequestMoney(0); setRequestProps([]); }, [targetId]);
+
+  function toggle(list, setList, id) {
+    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  }
+
+  const valid = !!target && offerMoney >= 0 && requestMoney >= 0 && offerMoney <= (me?.money || 0) && requestMoney <= (target?.money || 0);
+
+  if (!target) {
+    return <div style={{ textAlign: "center", color: "#8a7fb0", fontFamily: "sans-serif", fontSize: 13 }}>No one else to trade with.</div>;
+  }
+
+  return (
+    <div className="og-fade-in">
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 PROPOSE TRADE</div>
+
+      <label style={labelStyle}>Trade with</label>
+      <select
+        className="og-input" value={targetId} onChange={(e) => setTargetId(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 12 }}
+      >
+        {others.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1, textAlign: "left" }}>
+          <label style={labelStyle}>You give</label>
+          <input
+            className="og-input" type="number" min={0} max={me.money} value={offerMoney}
+            onChange={(e) => setOfferMoney(Math.max(0, Math.min(me.money, Number(e.target.value))))}
+            style={{ ...inputStyle, marginBottom: 8 }}
+          />
+          <div style={{ maxHeight: 110, overflowY: "auto", border: "1px solid #2c2247", borderRadius: 8, padding: 6 }}>
+            {myProps.length === 0 && <div style={{ color: "#6a5f8a", fontSize: 11, fontFamily: "sans-serif" }}>No properties</div>}
+            {myProps.map((id) => (
+              <label key={id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#d8d0f0", fontFamily: "sans-serif", marginBottom: 4, cursor: "pointer" }}>
+                <input type="checkbox" checked={offerProps.includes(id)} onChange={() => toggle(offerProps, setOfferProps, id)} />
+                {propLabel(id)}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1, textAlign: "left" }}>
+          <label style={labelStyle}>You get</label>
+          <input
+            className="og-input" type="number" min={0} max={target.money} value={requestMoney}
+            onChange={(e) => setRequestMoney(Math.max(0, Math.min(target.money, Number(e.target.value))))}
+            style={{ ...inputStyle, marginBottom: 8 }}
+          />
+          <div style={{ maxHeight: 110, overflowY: "auto", border: "1px solid #2c2247", borderRadius: 8, padding: 6 }}>
+            {theirProps.length === 0 && <div style={{ color: "#6a5f8a", fontSize: 11, fontFamily: "sans-serif" }}>No properties</div>}
+            {theirProps.map((id) => (
+              <label key={id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#d8d0f0", fontFamily: "sans-serif", marginBottom: 4, cursor: "pointer" }}>
+                <input type="checkbox" checked={requestProps.includes(id)} onChange={() => toggle(requestProps, setRequestProps, id)} />
+                {propLabel(id)}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <button
+          className="og-btn" style={{ ...primaryBtn, marginTop: 0, opacity: valid ? 1 : 0.4 }}
+          disabled={!valid}
+          onClick={() => onSubmit({ toId: targetId, offerMoney, offerProps, requestMoney, requestProps })}
+        >Send offer</button>
+        <button className="og-btn" style={{ ...secondaryBtn, marginTop: 0 }} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function TradeResponsePanel({ trade, players, onAccept, onDecline }) {
+  const from = players.find((p) => p.id === trade.fromId);
+  return (
+    <div style={{ textAlign: "center" }} className="og-fade-in">
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 TRADE OFFER</div>
+      <div style={{ color: "#fff", fontFamily: "sans-serif", fontSize: 14, marginBottom: 10 }}>
+        {from?.name || "Someone"} proposes:
+      </div>
+      <div style={{ display: "flex", gap: 10, textAlign: "left", marginBottom: 12 }}>
+        <div style={{ flex: 1, background: "#171126", border: "1px solid #2c2247", borderRadius: 8, padding: 8 }}>
+          <div style={{ color: "#8a7fb0", fontSize: 10, marginBottom: 4, fontFamily: "sans-serif" }}>THEY GIVE YOU</div>
+          {trade.offerMoney > 0 && <div style={{ color: "#3fae5a", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>${trade.offerMoney}</div>}
+          {trade.offerProps.map((id) => (
+            <div key={id} style={{ color: "#d8d0f0", fontSize: 11, fontFamily: "sans-serif" }}>{propLabel(id)}</div>
+          ))}
+          {trade.offerMoney === 0 && trade.offerProps.length === 0 && <div style={{ color: "#6a5f8a", fontSize: 11, fontFamily: "sans-serif" }}>Nothing</div>}
+        </div>
+        <div style={{ flex: 1, background: "#171126", border: "1px solid #2c2247", borderRadius: 8, padding: 8 }}>
+          <div style={{ color: "#8a7fb0", fontSize: 10, marginBottom: 4, fontFamily: "sans-serif" }}>THEY WANT</div>
+          {trade.requestMoney > 0 && <div style={{ color: "#e5433a", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>${trade.requestMoney}</div>}
+          {trade.requestProps.map((id) => (
+            <div key={id} style={{ color: "#d8d0f0", fontSize: 11, fontFamily: "sans-serif" }}>{propLabel(id)}</div>
+          ))}
+          {trade.requestMoney === 0 && trade.requestProps.length === 0 && <div style={{ color: "#6a5f8a", fontSize: 11, fontFamily: "sans-serif" }}>Nothing</div>}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="og-btn" style={{ ...primaryBtn, marginTop: 0 }} onClick={onAccept}>Accept</button>
+        <button className="og-btn" style={{ ...secondaryBtn, marginTop: 0 }} onClick={onDecline}>Decline</button>
+      </div>
+    </div>
+  );
+}
+
+function TradeWaitingPanel({ trade, players, onCancel }) {
+  const to = players.find((p) => p.id === trade.toId);
+  return (
+    <div style={{ textAlign: "center" }} className="og-fade-in">
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 TRADE SENT</div>
+      <div style={{ color: "#8a7fb0", fontSize: 13, marginBottom: 14, fontFamily: "sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <span className="og-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+        Waiting for {to?.name || "them"} to respond…
+      </div>
+      <button className="og-btn" style={{ ...secondaryBtn, marginTop: 0 }} onClick={onCancel}>Cancel offer</button>
+    </div>
+  );
+}
+
 function MoneyTag({ amount }) {
   const prevRef = useRef(amount);
   const [flash, setFlash] = useState(null); // 'up' | 'down' | null
@@ -1641,7 +1934,7 @@ function MoneyTag({ amount }) {
 
 function PlayersPanel({ state, myId }) {
   return (
-    <div style={{ ...cardStyle, padding: 18 }}>
+    <div style={{ ...cardStyle, padding: "clamp(12px, 3vw, 18px)" }}>
       <div style={{ ...labelStyle, marginBottom: 12 }}>PLAYERS</div>
       {state.players.map((p, i) => {
         const isTurn = i === state.turnIdx;
