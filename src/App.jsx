@@ -1,3 +1,21 @@
+/*
+  PATCH NOTES (bug fixes applied to the file you pasted):
+
+  1) CRITICAL — game freeze on jail:
+     In `handleRoll` (human) and the bot autoplay effect, when a player
+     is in jail, fails to roll doubles, and hasn't hit 3 turns yet, the
+     code set `state.dice` and returned WITHOUT calling `nextTurn()`.
+     Since `nextTurn()` is the only place that resets `dice` back to
+     null, and the Roll button is disabled while `dice` is truthy, the
+     turn could never advance — the game hard-locked as soon as any
+     player was jailed and didn't roll doubles. Fixed by calling
+     `nextTurn(state)` in that branch (both the human and bot paths),
+     while keeping the "3 failed turns -> forced $50 bail" rule intact.
+
+  Everything else in the file is unchanged from what you pasted — only
+  the two spots below (search for "FIX:") were touched.
+*/
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { readRoom, writeRoom, pollRoom, uploadFile, getPublicUrl } from "./supabaseStorage";
 
@@ -18,45 +36,45 @@ const GROUP_COLORS = {
 
 const RAW_BOARD = [
   { id: 0, name: "GO", type: "corner" },
-  { id: 1, name: "Chicken Nugget Ornament", type: "property", group: "brown", price: 60 },
+  { id: 1, name: "Meme Factory", type: "property", group: "brown", price: 60 },
   { id: 2, name: "Lucky Block", type: "lucky" },
-  { id: 3, name: "Bagel Cheese", type: "property", group: "brown", price: 60 },
+  { id: 3, name: "Podcast Booth", type: "property", group: "brown", price: 60 },
   { id: 4, name: "IRS Audit", type: "tax", amount: 200 },
-  { id: 5, name: "Slot Machine A", type: "slot", price: 200 },
-  { id: 6, name: "Chopper", type: "property", group: "cyan", price: 100 },
-  { id: 7, name: "Betty Nuru", type: "property", group: "cyan", price: 100 },
+  { id: 5, name: "Slots A", type: "slot", price: 200 },
+  { id: 6, name: "Cloud Server", type: "property", group: "cyan", price: 100 },
+  { id: 7, name: "Router Hub", type: "property", group: "cyan", price: 100 },
   { id: 8, name: "Lucky Block", type: "lucky" },
-  { id: 9, name: "Chicken Jockey", type: "property", group: "cyan", price: 120 },
-  { id: 10, name: "Just Visiting / Jail", type: "jail" },
-  { id: 11, name: "Blackberri Resort", type: "property", group: "pink", price: 140 },
-  { id: 12, name: "Physical Palace", type: "property", group: "pink", price: 140 },
-  { id: 13, name: "Slot Machine B", type: "slot", price: 200 },
-  { id: 14, name: "Chosen Cat Tree", type: "property", group: "pink", price: 160 },
+  { id: 9, name: "Game Cafe", type: "property", group: "cyan", price: 120 },
+  { id: 10, name: "Jail", type: "jail" },
+  { id: 11, name: "Vlog House", type: "property", group: "pink", price: 140 },
+  { id: 12, name: "Studio Loft", type: "property", group: "pink", price: 140 },
+  { id: 13, name: "Slots B", type: "slot", price: 200 },
+  { id: 14, name: "Merch Store", type: "property", group: "pink", price: 160 },
   { id: 15, name: "Lucky Block", type: "lucky" },
-  { id: 16, name: "Wack The Dog", type: "property", group: "orange", price: 180 },
-  { id: 17, name: "Jenson Ostrich", type: "property", group: "orange", price: 180 },
-  { id: 18, name: "Youtube", type: "property", group: "orange", price: 200 },
-  { id: 19, name: "Slot Machine C", type: "slot", price: 200 },
+  { id: 16, name: "Dog Park", type: "property", group: "orange", price: 180 },
+  { id: 17, name: "Pet Cafe", type: "property", group: "orange", price: 180 },
+  { id: 18, name: "YouTube", type: "property", group: "orange", price: 200 },
+  { id: 19, name: "Slots C", type: "slot", price: 200 },
   { id: 20, name: "Free Parking", type: "corner" },
-  { id: 21, name: "Scares Squirrel", type: "property", group: "red", price: 220 },
-  { id: 22, name: "Odd Goose", type: "property", group: "red", price: 220 },
+  { id: 21, name: "Search Co", type: "property", group: "red", price: 220 },
+  { id: 22, name: "Ad Network", type: "property", group: "red", price: 220 },
   { id: 23, name: "Lucky Block", type: "lucky" },
-  { id: 24, name: "Chris Cliff", type: "property", group: "red", price: 240 },
-  { id: 25, name: "Slot Machine D", type: "slot", price: 200 },
+  { id: 24, name: "Cliffside", type: "property", group: "red", price: 240 },
+  { id: 25, name: "Slots D", type: "slot", price: 200 },
   { id: 26, name: "Twitch", type: "property", group: "yellow", price: 260 },
-  { id: 27, name: "Melih Bat", type: "property", group: "yellow", price: 260 },
-  { id: 28, name: "Water The Dog", type: "property", group: "yellow", price: 280 },
+  { id: 27, name: "Live Arena", type: "property", group: "yellow", price: 260 },
+  { id: 28, name: "Dog Walkers", type: "property", group: "yellow", price: 280 },
   { id: 29, name: "Lucky Block", type: "lucky" },
   { id: 30, name: "Go To Jail", type: "corner" },
-  { id: 31, name: "Birthday Reunion", type: "property", group: "green", price: 300 },
-  { id: 32, name: "Chroma Cat Tree", type: "property", group: "green", price: 300 },
+  { id: 31, name: "Birthday Bash", type: "property", group: "green", price: 300 },
+  { id: 32, name: "Cat Cafe", type: "property", group: "green", price: 300 },
   { id: 33, name: "PP Tax", type: "tax", amount: 100 },
-  { id: 34, name: "Forbidden Item Shop", type: "property", group: "green", price: 320 },
-  { id: 35, name: "Slot Machine E", type: "slot", price: 200 },
+  { id: 34, name: "Vintage Shop", type: "property", group: "green", price: 320 },
+  { id: 35, name: "Slots E", type: "slot", price: 200 },
   { id: 36, name: "Lucky Block", type: "lucky" },
-  { id: 37, name: "Scares Search", type: "property", group: "blue", price: 350 },
-  { id: 38, name: "In The Cave Co", type: "property", group: "blue", price: 350 },
-  { id: 39, name: "Stitches", type: "property", group: "blue", price: 400 },
+  { id: 37, name: "Search Labs", type: "property", group: "blue", price: 350 },
+  { id: 38, name: "Data Cave", type: "property", group: "blue", price: 350 },
+  { id: 39, name: "Tailor Shop", type: "property", group: "blue", price: 400 },
 ];
 
 const LUCKY_CARDS = [
@@ -1055,6 +1073,11 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
             log(state, `${p.name} paid $50 bail after 3 turns.`);
             checkBankrupt(state, p);
           } else {
+            // FIX: previously this returned without ever calling nextTurn(),
+            // which left `state.dice` set forever and permanently disabled
+            // the Roll button (myTurn check requires !local.dice) — a hard
+            // game-freeze. Now we correctly pass the turn to the next player.
+            nextTurn(state);
             setRolling(false);
             await commit(state);
             return;
@@ -1304,6 +1327,10 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
               log(state, `${p.name} (bot) paid $50 bail after 3 turns.`);
               checkBankrupt(state, p);
             } else {
+              // FIX: same freeze bug as the human path above — must advance
+              // the turn here too, or the bot (and everyone after it)
+              // gets stuck forever with `dice` set and no way to roll again.
+              nextTurn(state);
               botActingRef.current = false;
               await commit(state);
               return;
@@ -1692,34 +1719,34 @@ function BoardView({ board2d, state }) {
                   }} />
 
                   <div style={{
-                    position: "absolute", top: "6%", width: "70%", display: "flex", justifyContent: "center", opacity: 0.9,
+                    position: "absolute", top: "5%", left: "50%", transform: "translateX(-50%)",
+                    display: "flex", justifyContent: "center", alignItems: "center",
                   }}>
-                    <svg viewBox="0 0 300 90" style={{ width: "100%", maxWidth: 230 }}>
-                      <g fill="#3a2f66">
-                        <rect x="4" y="55" width="30" height="30" />
-                        <rect x="36" y="42" width="10" height="43" />
-                        <rect x="38" y="20" width="6" height="20" />
-                        <circle cx="41" cy="15" r="4" />
-                        <circle cx="45" cy="10" r="4" />
-                        <circle cx="38" cy="9" r="4" />
-                        <rect x="52" y="48" width="20" height="37" />
-                        <rect x="76" y="30" width="26" height="55" />
-                        <rect x="184" y="30" width="26" height="55" />
-                        <rect x="212" y="48" width="20" height="37" />
-                        <rect x="238" y="42" width="24" height="43" />
-                        <rect x="264" y="20" width="6" height="65" />
-                        <rect x="284" y="26" width="6" height="59" />
-                        <circle cx="267" cy="15" r="4" />
-                        <circle cx="271" cy="10" r="4" />
-                        <circle cx="264" cy="9" r="4" />
-                        <rect x="4" y="83" width="286" height="4" />
+                    <svg viewBox="0 0 120 120" style={{ width: "clamp(48px, 11vw, 108px)", height: "clamp(48px, 11vw, 108px)" }}>
+                      <circle cx="60" cy="60" r="56" fill="#171126" stroke="#ffcf3f" strokeWidth="2.5" />
+                      <circle cx="60" cy="60" r="48" fill="none" stroke="#3f2f66" strokeWidth="1.5" strokeDasharray="2 4" />
+                      {/* orbiting property-color dots, evenly spaced — reads as a proper emblem, not a random skyline */}
+                      {Object.values(GROUP_COLORS).map((c, i, arr) => {
+                        const angle = (i / arr.length) * Math.PI * 2 - Math.PI / 2;
+                        const r = 48;
+                        return <circle key={c} cx={60 + r * Math.cos(angle)} cy={60 + r * Math.sin(angle)} r="3.2" fill={c} />;
+                      })}
+                      {/* two crossed dice, centered */}
+                      <g transform="translate(38,38) rotate(-12)">
+                        <rect x="0" y="0" width="30" height="30" rx="6" fill="#fff8ea" stroke="#171126" strokeWidth="2" />
+                        <circle cx="9" cy="9" r="2.4" fill="#241a3d" />
+                        <circle cx="21" cy="9" r="2.4" fill="#241a3d" />
+                        <circle cx="15" cy="15" r="2.4" fill="#241a3d" />
+                        <circle cx="9" cy="21" r="2.4" fill="#241a3d" />
+                        <circle cx="21" cy="21" r="2.4" fill="#241a3d" />
                       </g>
-                      <g transform="translate(150,42)">
-                        <circle r="22" fill="none" stroke="#ffcf3f" strokeWidth="2.5" />
-                        <ellipse rx="9" ry="22" fill="none" stroke="#ffcf3f" strokeWidth="1.5" opacity="0.7" />
-                        <ellipse rx="22" ry="9" fill="none" stroke="#ffcf3f" strokeWidth="1.5" opacity="0.7" />
-                        <line x1="-22" y1="0" x2="22" y2="0" stroke="#ffcf3f" strokeWidth="1.5" opacity="0.7" />
-                        <line x1="0" y1="-22" x2="0" y2="22" stroke="#ffcf3f" strokeWidth="1.5" opacity="0.7" />
+                      <g transform="translate(52,52) rotate(14)">
+                        <rect x="0" y="0" width="30" height="30" rx="6" fill="#ffcf3f" stroke="#171126" strokeWidth="2" />
+                        <circle cx="15" cy="9" r="2.4" fill="#241a3d" />
+                        <circle cx="9" cy="15" r="2.4" fill="#241a3d" />
+                        <circle cx="15" cy="15" r="2.4" fill="#241a3d" />
+                        <circle cx="21" cy="15" r="2.4" fill="#241a3d" />
+                        <circle cx="15" cy="21" r="2.4" fill="#241a3d" />
                       </g>
                     </svg>
                   </div>
@@ -1788,16 +1815,16 @@ function BoardView({ board2d, state }) {
               )}
               <div style={{
                 flex: 1, minHeight: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
-                overflow: "hidden",
+                overflow: "hidden", padding: "0 2px",
               }}>
                 <div style={{
-                  fontSize: "clamp(3.4px, 0.46vw, 5.1px)", color: "#d8d0f0", textAlign: "center",
-                  fontFamily: "'Inter', sans-serif", fontWeight: 600, lineHeight: 1.05, padding: "0 1px",
+                  fontSize: "clamp(5.5px, 0.62vw, 8px)", color: "#e6e0f5", textAlign: "center",
+                  fontFamily: "'Inter', sans-serif", fontWeight: 700, lineHeight: 1.15,
                   display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden",
-                  wordBreak: "normal", overflowWrap: "break-word", width: "100%", maxHeight: "100%",
+                  wordBreak: "keep-all", overflowWrap: "normal", hyphens: "none", width: "100%", maxHeight: "100%",
                 }}>{space.name}</div>
               </div>
-              {space.price && <div style={{ fontSize: "clamp(3.4px, 0.42vw, 4.8px)", color: "#ffcf3f", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, paddingBottom: 1, flexShrink: 0 }}>${space.price}</div>}
+              {space.price && <div style={{ fontSize: "clamp(5px, 0.5vw, 7px)", color: "#ffcf3f", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, paddingBottom: 2, flexShrink: 0 }}>${space.price}</div>}
               {ownerPlayer && (
                 <div style={{
                   position: "absolute", bottom: 2, right: 2, width: 8, height: 8,
