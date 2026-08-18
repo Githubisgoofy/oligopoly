@@ -64,7 +64,7 @@ const RAW_BOARD = [
   { id: 26, name: "Mellows Bed", type: "property", group: "yellow", price: 260 },
   { id: 27, name: "Nugget Plush", type: "property", group: "yellow", price: 260 },
   { id: 28, name: "Sshpleed's Hat", type: "property", group: "yellow", price: 280 },
-  { id: 29, name: "Lucky Block", type: "lucky" },
+  { id: 29, name: "Twitch", type: "property", group: "yellow", price: 250 },
   { id: 30, name: "Go To Jail", type: "corner" },
   { id: 31, name: "Blueberry Redbull", type: "property", group: "green", price: 300 },
   { id: 32, name: "Princess' Palace", type: "property", group: "green", price: 300 },
@@ -303,7 +303,7 @@ function BackgroundMusic({ screen }) {
           boxShadow: "0 6px 16px rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
         }}
       >
-        {muted ? "🔇" : "🎵"}
+        {muted ? <Icon name="mute" size={17} /> : <Icon name="music" size={17} />}
       </button>
     </>
   );
@@ -683,29 +683,31 @@ function Icon({ name, size = 16, color = "currentColor", style }) {
 // emoji that used to flank the Lucky Block sign at board center. `flip` mirrors it for the right side.
 function TopHatMan({ size = 40, flip = false, color = "#3a2f66" }) {
   return (
-    <svg viewBox="0 0 60 100" width={size} height={size * (100 / 60)} style={{ transform: flip ? "scaleX(-1)" : "none" }}>
-      <g fill={color}>
-        {/* top hat */}
-        <rect x="17" y="2" width="16" height="4" rx="1" />
-        <rect x="19" y="6" width="12" height="14" rx="1.5" />
-        {/* head */}
-        <circle cx="25" cy="28" r="7" />
-        {/* mustache */}
-        <path d="M19 29c2 3 8 3 10 0" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
-        {/* body / coat */}
-        <path d="M14 40 L25 34 L36 40 L34 66 L16 66 Z" />
-        {/* bow tie */}
-        <path d="M22 36 L25 38 L28 36 L28 40 L25 39 L22 40 Z" />
-        {/* legs, mid-stride */}
-        <rect x="15" y="64" width="7" height="24" rx="2" transform="rotate(-10 15 64)" />
-        <rect x="28" y="64" width="7" height="24" rx="2" transform="rotate(16 28 64)" />
-        {/* front arm + cane */}
-        <rect x="35" y="42" width="6" height="20" rx="3" transform="rotate(20 35 42)" />
-        <line x1="44" y1="58" x2="44" y2="88" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
-        {/* back arm */}
-        <rect x="10" y="42" width="6" height="18" rx="3" transform="rotate(-24 10 42)" />
-      </g>
-    </svg>
+    <div style={{ width: size, aspectRatio: "60 / 100" }}>
+      <svg viewBox="0 0 60 100" width="100%" height="100%" style={{ display: "block", transform: flip ? "scaleX(-1)" : "none" }}>
+        <g fill={color}>
+          {/* top hat */}
+          <rect x="17" y="2" width="16" height="4" rx="1" />
+          <rect x="19" y="6" width="12" height="14" rx="1.5" />
+          {/* head */}
+          <circle cx="25" cy="28" r="7" />
+          {/* mustache */}
+          <path d="M19 29c2 3 8 3 10 0" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+          {/* body / coat */}
+          <path d="M14 40 L25 34 L36 40 L34 66 L16 66 Z" />
+          {/* bow tie */}
+          <path d="M22 36 L25 38 L28 36 L28 40 L25 39 L22 40 Z" />
+          {/* legs, mid-stride */}
+          <rect x="15" y="64" width="7" height="24" rx="2" transform="rotate(-10 15 64)" />
+          <rect x="28" y="64" width="7" height="24" rx="2" transform="rotate(16 28 64)" />
+          {/* front arm + cane */}
+          <rect x="35" y="42" width="6" height="20" rx="3" transform="rotate(20 35 42)" />
+          <line x1="44" y1="58" x2="44" y2="88" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+          {/* back arm */}
+          <rect x="10" y="42" width="6" height="18" rx="3" transform="rotate(-24 10 42)" />
+        </g>
+      </svg>
+    </div>
   );
 }
 
@@ -1625,7 +1627,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
             !local.awaitingBuyDecision && !local.pendingAuction && !showTradeBuilder &&
             local.players.filter((p) => p.id !== myId && !p.bankrupt).length > 0 && (
             <button className="og-btn" style={{ ...secondaryBtn, marginTop: 0 }} onClick={() => setShowTradeBuilder(true)}>
-              🤝 Propose trade
+              <Icon name="handshake" size={14} style={{ marginRight: 6 }} /> Propose trade
             </button>
           )}
 
@@ -1704,7 +1706,7 @@ function CutsceneOverlay({ event, players }) {
   useEffect(() => () => timeoutsRef.current.forEach(clearTimeout), []);
 
   if (!display) return null;
-  const meta = EVENT_META[display.kind] || { icon: "✨", color: "#ffcf3f" };
+  const meta = EVENT_META[display.kind] || { icon: "sparkle", color: "#ffcf3f" };
   const player = display.playerId ? players.find((p) => p.id === display.playerId) : null;
 
   return (
@@ -1725,7 +1727,7 @@ function CutsceneOverlay({ event, players }) {
         transition: "opacity 0.35s cubic-bezier(0.34,1.56,0.64,1), transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
         maxWidth: "min(90%, 380px)",
       }}>
-        <div style={{ fontSize: 34, flexShrink: 0 }}>{meta.icon}</div>
+        <div style={{ flexShrink: 0 }}><Icon name={meta.icon} size={34} color={meta.color} /></div>
         <div style={{ textAlign: "left" }}>
           <div style={{
             color: meta.color, fontFamily: "'Archivo Black', sans-serif", fontSize: 17,
@@ -1769,7 +1771,7 @@ function TurnPanel({ room, me, myTurn, rolling, onRoll, onPayBail }) {
             color: "#ff9d9d", fontSize: 12, marginBottom: 8, fontFamily: "sans-serif",
             background: "rgba(229,67,58,0.1)", border: "1px solid rgba(229,67,58,0.3)", borderRadius: 8, padding: "8px 10px",
           }}>
-            🔒 In jail (turn {cp.jailTurns}/3). Roll doubles to escape{room.settings.bond ? ", or pay a $100 bond." : "."}
+            <Icon name="lock" size={13} style={{ marginRight: 5 }} /> In jail (turn {cp.jailTurns}/3). Roll doubles to escape{room.settings.bond ? ", or pay a $100 bond." : "."}
           </div>
           {room.settings.bond && (
             <button className="og-btn" style={secondaryBtn} onClick={onPayBail}>Pay $100 bond</button>
@@ -1816,7 +1818,7 @@ function AuctionPanel({ state, me, onBid, onClose, isHost }) {
   const canBid = !!me && !me.bankrupt && amt > a.highBid && amt <= myMoney;
   return (
     <div style={{ textAlign: "center" }} className="og-fade-in">
-      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🔨 AUCTION</div>
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}><Icon name="hammer" size={13} style={{ marginRight: 5 }} /> AUCTION</div>
       <div style={{ color: "#fff", fontFamily: "sans-serif", fontWeight: 800, fontSize: 15 }}>{space.name}</div>
       <div style={{ color: "#8a7fb0", fontSize: 12, margin: "8px 0 12px", fontFamily: "sans-serif" }}>
         Current high bid: <span style={{ color: "#ffcf3f", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>${a.highBid}</span> {highBidderName && `by ${highBidderName}`}
@@ -1868,7 +1870,7 @@ function TradeBuilderPanel({ me, others, ownership, onSubmit, onClose }) {
 
   return (
     <div className="og-fade-in">
-      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 PROPOSE TRADE</div>
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}><Icon name="handshake" size={13} style={{ marginRight: 5 }} /> PROPOSE TRADE</div>
 
       <label style={labelStyle}>Trade with</label>
       <select
@@ -1931,7 +1933,7 @@ function TradeResponsePanel({ trade, players, onAccept, onDecline }) {
   const from = players.find((p) => p.id === trade.fromId);
   return (
     <div style={{ textAlign: "center" }} className="og-fade-in">
-      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 TRADE OFFER</div>
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}><Icon name="handshake" size={13} style={{ marginRight: 5 }} /> TRADE OFFER</div>
       <div style={{ color: "#fff", fontFamily: "sans-serif", fontSize: 14, marginBottom: 10 }}>
         {from?.name || "Someone"} proposes:
       </div>
@@ -1965,7 +1967,7 @@ function TradeWaitingPanel({ trade, players, onCancel }) {
   const to = players.find((p) => p.id === trade.toId);
   return (
     <div style={{ textAlign: "center" }} className="og-fade-in">
-      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}>🤝 TRADE SENT</div>
+      <div style={{ ...labelStyle, marginBottom: 10, textAlign: "center" }}><Icon name="handshake" size={13} style={{ marginRight: 5 }} /> TRADE SENT</div>
       <div style={{ color: "#8a7fb0", fontSize: 13, marginBottom: 14, fontFamily: "sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
         <span className="og-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
         Waiting for {to?.name || "them"} to respond…
@@ -2014,7 +2016,9 @@ function PlayersPanel({ state, myId }) {
           }}>
             <Avatar player={p} size={22} />
             <div style={{ flex: 1, color: "#fff", fontFamily: "sans-serif", fontSize: 13, fontWeight: isTurn ? 700 : 500, transition: "font-weight 0.3s ease" }}>
-              {p.name}{p.id === myId && <span style={{ color: "#6a5f8a" }}> (you)</span>}{p.inJail && " 🔒"}{p.bankrupt && " 💀"}
+              {p.name}{p.id === myId && <span style={{ color: "#6a5f8a" }}> (you)</span>}
+              {p.inJail && <Icon name="lock" size={11} color="#ff9d9d" style={{ marginLeft: 5 }} />}
+              {p.bankrupt && <Icon name="skull" size={11} color="#8a7fb0" style={{ marginLeft: 5 }} />}
             </div>
             <MoneyTag amount={p.money} />
           </div>
@@ -2025,7 +2029,7 @@ function PlayersPanel({ state, myId }) {
           marginTop: 12, paddingTop: 12, borderTop: "1px solid #241c3d", color: "#ffcf3f", fontSize: 12,
           fontFamily: "sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
-          <span>🅿️ Free Parking pot</span>
+          <span><Icon name="parking" size={13} style={{ marginRight: 5 }} /> Free Parking pot</span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>${state.freeParkingPot}</span>
         </div>
       )}
@@ -2125,7 +2129,9 @@ function BoardView({ board2d, state }) {
                     marginTop: "6%", display: "flex", alignItems: "center", justifyContent: "center",
                     gap: "6%", width: "90%", position: "relative", zIndex: 1,
                   }}>
-                    <span style={{ fontSize: "clamp(16px, 3vw, 34px)", filter: "grayscale(1) brightness(1.6)", opacity: 0.55 }}>🕴️</span>
+                    <div style={{ opacity: 0.85, flexShrink: 0 }}>
+                      <TopHatMan size={"clamp(18px, 3.4vw, 38px)"} color="#4a3d78" />
+                    </div>
                     <div style={{
                       background: "linear-gradient(180deg, #ffd95c 0%, #f2c93f 100%)",
                       border: "3px solid #171126", borderRadius: 8,
@@ -2137,7 +2143,9 @@ function BoardView({ board2d, state }) {
                         fontFamily: "'Archivo Black', sans-serif", letterSpacing: 1, textAlign: "center", lineHeight: 1.15,
                       }}>?<br />LUCKY<br />BLOCK</span>
                     </div>
-                    <span style={{ fontSize: "clamp(16px, 3vw, 34px)", transform: "scaleX(-1)", filter: "grayscale(1) brightness(1.6)", opacity: 0.55 }}>🕴️</span>
+                    <div style={{ opacity: 0.85, flexShrink: 0 }}>
+                      <TopHatMan size={"clamp(18px, 3.4vw, 38px)"} flip color="#4a3d78" />
+                    </div>
                   </div>
 
                   <div style={{ position: "relative", zIndex: 1, marginTop: "auto" }}>
