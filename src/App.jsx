@@ -41,7 +41,7 @@ const RAW_BOARD = [
   { id: 3, name: "Fortnite Item Shop", type: "property", group: "brown", price: 60 },
   { id: 4, name: "IRS Audit", type: "tax", amount: 200 },
   { id: 5, name: "Chopper", type: "slot", price: 200 },
-  { id: 6, name: "Beetle Cheese", type: "property", group: "cyan", price: 100 },
+  { id: 6, name: "Beeble Cheese", type: "property", group: "cyan", price: 100 },
   { id: 7, name: "Butt World", type: "property", group: "cyan", price: 100 },
   { id: 8, name: "Lucky Block", type: "lucky" },
   { id: 9, name: "Chicken Nugget Ornament", type: "property", group: "cyan", price: 120 },
@@ -57,19 +57,19 @@ const RAW_BOARD = [
   { id: 19, name: "Mellow", type: "slot", price: 200 },
   { id: 20, name: "Free Parking", type: "corner" },
   { id: 21, name: "Walrus Mask", type: "property", group: "red", price: 220 },
-  { id: 22, name: "Scarr's Setup", type: "property", group: "red", price: 220 },
+  { id: 22, name: "Scorp's Setup", type: "property", group: "red", price: 220 },
   { id: 23, name: "Lucky Block", type: "lucky" },
-  { id: 24, name: "Scarr's Guitar", type: "property", group: "red", price: 240 },
+  { id: 24, name: "Scorp's Guitar", type: "property", group: "red", price: 240 },
   { id: 25, name: "WinterAG The Dog", type: "slot", price: 200 },
   { id: 26, name: "Mellows Bed", type: "property", group: "yellow", price: 260 },
   { id: 27, name: "Nugget Plush", type: "property", group: "yellow", price: 260 },
-  { id: 28, name: "Ssaphel's Hat", type: "property", group: "yellow", price: 280 },
+  { id: 28, name: "Sshpleed's Hat", type: "property", group: "yellow", price: 280 },
   { id: 29, name: "Lucky Block", type: "lucky" },
   { id: 30, name: "Go To Jail", type: "corner" },
   { id: 31, name: "Blueberry Redbull", type: "property", group: "green", price: 300 },
   { id: 32, name: "Princess' Palace", type: "property", group: "green", price: 300 },
   { id: 33, name: "PP Tax", type: "tax", amount: 100 },
-  { id: 34, name: "Chorpess Cat Tree", type: "property", group: "green", price: 320 },
+  { id: 34, name: "Choppers Cat Tree", type: "property", group: "green", price: 320 },
   { id: 35, name: "Slot Machine", type: "slot", price: 200 },
   { id: 36, name: "Lucky Block", type: "lucky" },
   { id: 37, name: "Winters Door", type: "property", group: "blue", price: 350 },
@@ -1387,7 +1387,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         if (!state.pendingAuction) nextTurn(state);
         botActingRef.current = false;
         await commit(state);
-      }, 900);
+      }, 450);
       return () => clearTimeout(t);
     }
 
@@ -1436,7 +1436,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         }
         botActingRef.current = false;
         await commit(state);
-      }, 900);
+      }, 450);
       return () => clearTimeout(t);
     }
 
@@ -1448,7 +1448,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
     if (!iAmHost || !local.pendingAuction) return;
     const humansLeft = local.players.filter((p) => !p.bankrupt && !p.isBot);
     if (humansLeft.length > 0) return;
-    const t = setTimeout(() => { handleAuctionClose(); }, 1500);
+    const t = setTimeout(() => { handleAuctionClose(); }, 900);
     return () => clearTimeout(t);
   }, [local.pendingAuction, iAmHost]);
 
@@ -1496,7 +1496,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
       setEvent(state, "buy", "Trade complete", `${from.name} ↔ ${to.name}`, to.id);
       state.pendingTrade = null;
       await commit(state);
-    }, 1400);
+    }, 700);
     return () => clearTimeout(timer);
   }, [local.pendingTrade, iAmHost]);
 
@@ -1520,8 +1520,8 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         }}>ROOM {roomCode}</div>
       </div>
 
-      <div style={{ display: "flex", width: "100%", gap: 14, flexWrap: "wrap", flex: 1, minHeight: 0 }}>
-        <div style={{ flex: "3 1 300px", minWidth: 260, display: "flex" }}>
+      <div style={{ display: "flex", width: "100%", gap: 14, flexWrap: "wrap", flex: 1, minHeight: 0, alignItems: "flex-start" }}>
+        <div style={{ flex: "3 1 300px", minWidth: 260, maxWidth: "min(920px, 82vh, 100%)", display: "flex", margin: "0 auto" }}>
           <BoardView board2d={board2d} state={local} />
         </div>
 
