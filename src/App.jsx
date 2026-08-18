@@ -646,6 +646,70 @@ function Die({ value, rolling, size = 44 }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  ICONS — flat line-style SVGs replacing emoji throughout the UI     */
+/* ------------------------------------------------------------------ */
+
+const ICON_PATHS = {
+  lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" /><circle cx="12" cy="15.5" r="1.6" fill="var(--ic-bg,#241a3d)" /></>,
+  skull: <><path d="M12 3C7 3 4 6.5 4 11c0 3 1.5 5 3 6.2V20a1 1 0 0 0 1 1h1.5v-2h1v2h3v-2h1v2H16a1 1 0 0 0 1-1v-2.8c1.5-1.2 3-3.2 3-6.2 0-4.5-3-8-8-8Z" /><circle cx="9" cy="11" r="1.6" fill="var(--ic-bg,#241a3d)" /><circle cx="15" cy="11" r="1.6" fill="var(--ic-bg,#241a3d)" /></>,
+  trophy: <><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" fill="none" /><path d="M7 5H4v1a4 4 0 0 0 4 4" fill="none" /><path d="M17 5h3v1a4 4 0 0 1-4 4" fill="none" /><rect x="10.5" y="13" width="3" height="4" /><rect x="7.5" y="19" width="9" height="2" rx="1" /></>,
+  music: <><circle cx="7" cy="18" r="2.6" /><circle cx="17" cy="16" r="2.6" /><path d="M9.6 18V6.5L19.6 4v11.5" fill="none" /></>,
+  mute: <><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M17 9l4 6M21 9l-4 6" fill="none" strokeLinecap="round" /></>,
+  parking: <><rect x="4" y="4" width="16" height="16" rx="3" fill="none" /><path d="M9.5 16V8h3.2a2.8 2.8 0 0 1 0 5.6H9.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></>,
+  receipt: <><path d="M6 3h12v18l-2-1.3L14 21l-2-1.3L10 21l-2-1.3L6 21V3Z" /><path d="M8.5 8h7M8.5 11.5h7M8.5 15h4.5" fill="none" strokeLinecap="round" /></>,
+  question: <><circle cx="12" cy="12" r="9.5" fill="none" /><path d="M9.3 9.6a2.8 2.8 0 1 1 4.1 2.5c-.9.5-1.4 1-1.4 2.1" fill="none" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="17.3" r="1.1" fill="var(--ic-bg,#241a3d)" /></>,
+  cash: <><rect x="2.5" y="6.5" width="19" height="11" rx="2" fill="none" /><circle cx="12" cy="12" r="3" fill="none" /><circle cx="6" cy="9.5" r="0.9" fill="var(--ic-bg,#241a3d)" /><circle cx="18" cy="14.5" r="0.9" fill="var(--ic-bg,#241a3d)" /></>,
+  house: <><path d="M4 11.5 12 4l8 7.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /><path d="M6 10v10h12V10" fill="none" strokeLinejoin="round" /><rect x="10" y="14" width="4" height="6" /></>,
+  hammer: <><rect x="3.3" y="14.2" width="12" height="4" rx="1" transform="rotate(-45 3.3 14.2)" /><rect x="12.3" y="4.3" width="6" height="9" rx="1.6" transform="rotate(45 12.3 4.3)" /></>,
+  handshake: <><path d="M2.5 12 6 8.5l3 2 2-2 3 1.5 2.5-2.5 4 4-3 3-2-2-2.5 2.5-3-1.5-2 2-3-2Z" fill="none" strokeLinejoin="round" /></>,
+  moneybag: <><path d="M9 4h6l-1.5 3.2c2.6 1 4.5 3.4 4.5 6.3 0 3.6-3.1 6.5-8 6.5s-8-2.9-8-6.5c0-2.9 1.9-5.3 4.5-6.3L9 4Z" /><path d="M12 10v6M10.3 12.2c0-.9.7-1.4 1.7-1.4s1.9.6 1.9 1.5c0 2-3.8 1.3-3.8 3.3 0 .9.9 1.5 1.9 1.5s1.7-.5 1.7-1.4" fill="none" strokeLinecap="round" /></>,
+  police: <><rect x="3" y="9" width="18" height="9" rx="2" fill="none" /><circle cx="8" cy="13.5" r="1.6" fill="var(--ic-bg,#241a3d)" /><circle cx="16" cy="13.5" r="1.6" fill="var(--ic-bg,#241a3d)" /><rect x="10.3" y="4.5" width="3.4" height="3" rx="0.6" /><path d="M6 9V7a6 6 0 0 1 12 0v2" fill="none" /></>,
+  sparkle: <><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z" /></>,
+};
+
+function Icon({ name, size = 16, color = "currentColor", style }) {
+  const content = ICON_PATHS[name] || ICON_PATHS.sparkle;
+  return (
+    <svg
+      viewBox="0 0 24 24" width={size} height={size} fill={color} stroke={color} strokeWidth="1.4"
+      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0, ...style }}
+    >
+      {content}
+    </svg>
+  );
+}
+
+// A proper Monopoly-style gentleman mascot (top hat, cane, mustache) — replaces the walking-man
+// emoji that used to flank the Lucky Block sign at board center. `flip` mirrors it for the right side.
+function TopHatMan({ size = 40, flip = false, color = "#3a2f66" }) {
+  return (
+    <svg viewBox="0 0 60 100" width={size} height={size * (100 / 60)} style={{ transform: flip ? "scaleX(-1)" : "none" }}>
+      <g fill={color}>
+        {/* top hat */}
+        <rect x="17" y="2" width="16" height="4" rx="1" />
+        <rect x="19" y="6" width="12" height="14" rx="1.5" />
+        {/* head */}
+        <circle cx="25" cy="28" r="7" />
+        {/* mustache */}
+        <path d="M19 29c2 3 8 3 10 0" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+        {/* body / coat */}
+        <path d="M14 40 L25 34 L36 40 L34 66 L16 66 Z" />
+        {/* bow tie */}
+        <path d="M22 36 L25 38 L28 36 L28 40 L25 39 L22 40 Z" />
+        {/* legs, mid-stride */}
+        <rect x="15" y="64" width="7" height="24" rx="2" transform="rotate(-10 15 64)" />
+        <rect x="28" y="64" width="7" height="24" rx="2" transform="rotate(16 28 64)" />
+        {/* front arm + cane */}
+        <rect x="35" y="42" width="6" height="20" rx="3" transform="rotate(20 35 42)" />
+        <line x1="44" y1="58" x2="44" y2="88" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+        {/* back arm */}
+        <rect x="10" y="42" width="6" height="18" rx="3" transform="rotate(-24 10 42)" />
+      </g>
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  START SCREEN                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -1387,7 +1451,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         if (!state.pendingAuction) nextTurn(state);
         botActingRef.current = false;
         await commit(state);
-      }, 450);
+      }, 250);
       return () => clearTimeout(t);
     }
 
@@ -1436,7 +1500,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         }
         botActingRef.current = false;
         await commit(state);
-      }, 450);
+      }, 250);
       return () => clearTimeout(t);
     }
 
@@ -1448,7 +1512,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
     if (!iAmHost || !local.pendingAuction) return;
     const humansLeft = local.players.filter((p) => !p.bankrupt && !p.isBot);
     if (humansLeft.length > 0) return;
-    const t = setTimeout(() => { handleAuctionClose(); }, 900);
+    const t = setTimeout(() => { handleAuctionClose(); }, 500);
     return () => clearTimeout(t);
   }, [local.pendingAuction, iAmHost]);
 
@@ -1496,7 +1560,7 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
       setEvent(state, "buy", "Trade complete", `${from.name} ↔ ${to.name}`, to.id);
       state.pendingTrade = null;
       await commit(state);
-    }, 700);
+    }, 400);
     return () => clearTimeout(timer);
   }, [local.pendingTrade, iAmHost]);
 
@@ -1520,12 +1584,12 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
         }}>ROOM {roomCode}</div>
       </div>
 
-      <div style={{ display: "flex", width: "100%", gap: 14, flexWrap: "wrap", flex: 1, minHeight: 0, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", width: "100%", gap: 14, flexWrap: "wrap", flex: 1, minHeight: 0, alignItems: "flex-start", justifyContent: "center" }}>
         <div style={{ flex: "3 1 300px", minWidth: 260, maxWidth: "min(920px, 82vh, 100%)", display: "flex", margin: "0 auto" }}>
           <BoardView board2d={board2d} state={local} />
         </div>
 
-        <div style={{ flex: "1 1 280px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ flex: "1 1 280px", minWidth: 260, maxWidth: 420, display: "flex", flexDirection: "column", gap: 12 }}>
           <PlayersPanel state={local} myId={myId} />
 
           <div style={{ ...cardStyle, padding: "clamp(14px, 3.5vw, 20px)" }} className="og-fade-in">
@@ -1582,16 +1646,16 @@ function GameScreen({ room, myId, roomCode, onUpdate }) {
 }
 
 const EVENT_META = {
-  passgo: { icon: "💰", color: "#3fae5a" },
-  jail: { icon: "🚔", color: "#e5433a" },
-  jackpot: { icon: "🅿️", color: "#ffcf3f" },
-  tax: { icon: "🧾", color: "#f0912b" },
-  lucky: { icon: "❓", color: "#f2d13c" },
-  rent: { icon: "💸", color: "#3f6fd1" },
-  buy: { icon: "🏠", color: "#a7e0f0" },
-  bankrupt: { icon: "💀", color: "#e5433a" },
-  auction_won: { icon: "🔨", color: "#e86fb0" },
-  win: { icon: "🏆", color: "#ffcf3f" },
+  passgo: { icon: "moneybag", color: "#3fae5a" },
+  jail: { icon: "police", color: "#e5433a" },
+  jackpot: { icon: "parking", color: "#ffcf3f" },
+  tax: { icon: "receipt", color: "#f0912b" },
+  lucky: { icon: "question", color: "#f2d13c" },
+  rent: { icon: "cash", color: "#3f6fd1" },
+  buy: { icon: "house", color: "#a7e0f0" },
+  bankrupt: { icon: "skull", color: "#e5433a" },
+  auction_won: { icon: "hammer", color: "#e86fb0" },
+  win: { icon: "trophy", color: "#ffcf3f" },
 };
 
 function GameOverOverlay({ winner, me }) {
